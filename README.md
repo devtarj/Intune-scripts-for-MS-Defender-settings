@@ -3,7 +3,7 @@
 
 *Credits to the respective creator.
 
-These scripts can be readily deployed for various tasks related to Device Management using Microsoft Intune.
+These scripts can be readily deployed for various tasks related to Device Management using Microsoft Intune. Some scripts have been split into two parts - Detection and Remediation. Files names have been kept as required.
 
 Currently, the following scripts are available in this repository.
 
