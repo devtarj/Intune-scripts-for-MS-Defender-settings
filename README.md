@@ -1,4 +1,4 @@
-# Intune-scripts-for-MS-Defender-settings
+# MS-Intune-scripts
 ![clint-patterson--jCY4oEMA3o-unsplash](https://github.com/user-attachments/assets/65681762-a45b-4c0e-b18a-f723636502a9)
 
 *Credits to the respective creator.
