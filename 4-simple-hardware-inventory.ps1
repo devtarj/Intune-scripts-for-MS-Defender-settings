@@ -8,11 +8,27 @@ Version: 0.1
 # Outputs inventory data as JSON
 
 # ---------------------------
-# Helper: Safe Property Getter
-# ---------------------------
-function Invoke-SafeCommand {
-    param($script)
-    try { & $script } catch { $null }
+# ===========================
+# Intune-Friendly Inventory Script
+# Outputs a single JSON object
+# ===========================
+
+# Stop noisy non-terminating errors from cluttering output
+$ErrorActionPreference = 'SilentlyContinue'
+
+# Simple wrapper to safely run commands
+function Invoke-Safe {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ScriptBlock]$ScriptBlock
+    )
+    try {
+        & $ScriptBlock
+    }
+    catch {
+        # Return $null on failure, keep script going
+        $null
+    }
 }
 
 # ---------------------------
@@ -25,23 +41,27 @@ $os      = Get-CimInstance -ClassName Win32_OperatingSystem
 # ---------------------------
 # RAM
 # ---------------------------
-$ramGB = [Math]::Round(($compSys.TotalPhysicalMemory / 1GB), 2)
+$ramGB = if ($compSys.TotalPhysicalMemory) {
+    [Math]::Round(($compSys.TotalPhysicalMemory / 1GB), 2)
+}
+else {
+    $null
+}
 
 # ---------------------------
 # Disk Info (Physical Disks)
 # ---------------------------
-$disks = Invoke-SafeCommand { 
-    Get-PhysicalDisk | Select-Object FriendlyName, MediaType, Size, HealthStatus 
+$disks = Invoke-Safe {
+    Get-PhysicalDisk | Select-Object FriendlyName, MediaType, Size, HealthStatus
 }
 
-# Convert disk size to GB
 $diskList = @()
 if ($disks) {
     foreach ($d in $disks) {
         $diskList += [PSCustomObject]@{
             Name         = $d.FriendlyName
             Type         = $d.MediaType
-            SizeGB       = [Math]::Round(($d.Size / 1GB), 2)
+            SizeGB       = if ($d.Size) { [Math]::Round(($d.Size / 1GB), 2) } else { $null }
             HealthStatus = $d.HealthStatus
         }
     }
@@ -50,44 +70,56 @@ if ($disks) {
 # ---------------------------
 # Battery Info (If Laptop)
 # ---------------------------
-$battery = Invoke-SafeCommand { 
-    Get-CimInstance -ClassName Win32_Battery | 
-    Select-Object Status, EstimatedChargeRemaining, BatteryStatus
+$battery = Invoke-Safe {
+    Get-CimInstance -ClassName Win32_Battery |
+        Select-Object Status, EstimatedChargeRemaining, BatteryStatus
 }
 
 # ---------------------------
 # Installed Applications
-# (Simple list)
+#  - Includes 32-bit and 64-bit
+#  - Filters out entries with no DisplayName
 # ---------------------------
-$apps = Invoke-SafeCommand {
-    Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |
+$apps = Invoke-Safe {
+    $paths = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+
+    Get-ItemProperty -Path $paths -ErrorAction SilentlyContinue |
+        Where-Object { $_.DisplayName -and $_.DisplayName.Trim() -ne '' } |
         Select-Object DisplayName, DisplayVersion, Publisher
 }
 
 # ---------------------------
 # Last Reboot
 # ---------------------------
-$lastBoot = ([System.Management.ManagementDateTimeConverter]::ToDateTime($os.LastBootUpTime))
-
-# ---------------------------
-# Build Inventory Object
-# ---------------------------
-$inventory = [PSCustomObject]@{
-    DeviceName      = $env:COMPUTERNAME
-    Manufacturer    = $compSys.Manufacturer
-    Model           = $compSys.Model
-    SerialNumber    = $bios.SerialNumber
-    OSVersion       = $os.Version
-    RAM_GB          = $ramGB
-    LastReboot      = $lastBoot
-    Disks           = $diskList
-    Battery         = $battery
-    InstalledApps   = $apps
+$lastBoot = $null
+if ($os.LastBootUpTime) {
+    $lastBoot = [System.Management.ManagementDateTimeConverter]::ToDateTime($os.LastBootUpTime).ToString('o')  # ISO 8601
 }
 
 # ---------------------------
-# Output as JSON
+# Build Inventory Object
+# (Flat enough for Intune/Log Analytics)
+# ---------------------------
+$inventory = [PSCustomObject]@{
+    DeviceName   = $env:COMPUTERNAME
+    Manufacturer = $compSys.Manufacturer
+    Model        = $compSys.Model
+    SerialNumber = $bios.SerialNumber
+    OSVersion    = $os.Version
+    RAM_GB       = $ramGB
+    LastReboot   = $lastBoot
+    Disks        = $diskList
+    Battery      = $battery
+    InstalledApps = $apps
+}
+
+# ---------------------------
+# Output as JSON (single object)
 # ---------------------------
 $inventory | ConvertTo-Json -Depth 5
+
 
 # --------------------------- END OF SCRIPT ---------------------------
