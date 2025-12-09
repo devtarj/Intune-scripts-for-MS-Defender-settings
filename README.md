@@ -16,3 +16,6 @@ Currently, the following scripts are available in this repository.
 
 3. **Reparir System Integrity**
    This script will repair any flaws in underlying windows systems. Built on **System File Checker (SFC)**, it scans the operating system for missing or corrupted system files and repairs them automatically.
+
+4. **Fetching basic inventory**
+   This script will fetch basic system information, disk information, installed applications, last reboot, and battery information (in case of laptop).
