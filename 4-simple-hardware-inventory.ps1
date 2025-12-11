@@ -1,13 +1,12 @@
 <#
 Creation date: 05-Dec-2025
-Last modified date: 05-Dec-2025
+Last modified date: 11-Dec-2025
 Version: 0.1
 #>
 
 # Simple Hardware Inventory Script
 # Outputs inventory data as JSON
 
-# ---------------------------
 # ===========================
 # Intune-Friendly Inventory Script
 # Outputs a single JSON object
