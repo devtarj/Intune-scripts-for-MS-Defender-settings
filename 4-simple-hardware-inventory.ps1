@@ -118,7 +118,7 @@ $inventory = [PSCustomObject]@{
 # ---------------------------
 # Output as JSON (single object)
 # ---------------------------
-# $inventory | ConvertTo-Json -Depth 5
+$inventory | ConvertTo-Json -Depth 5
 
 
 # --------------------------- END OF SCRIPT ---------------------------
